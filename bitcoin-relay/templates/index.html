@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Relay - Private Fund Management</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-orange: #f7931a;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a371f7;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .logo span {
+            color: var(--accent-orange);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Network Toggle */
+        .network-toggle {
+            display: flex;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .network-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .network-btn.active {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .network-btn.testnet.active {
+            color: var(--accent-blue);
+        }
+
+        .network-btn.mainnet.active {
+            color: var(--accent-orange);
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+        }
+
+        .status-dot.running {
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Auth Screen */
+        .auth-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            gap: 30px;
+        }
+
+        .auth-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-box h2 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .auth-box p {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+        }
+
+        input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #ffa033;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .btn-success {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .btn-block {
+            width: 100%;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            display: none;
+        }
+
+        .dashboard.visible {
+            display: block;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .stat-card .value.orange { color: var(--accent-orange); }
+        .stat-card .value.green { color: var(--accent-green); }
+        .stat-card .value.blue { color: var(--accent-blue); }
+        .stat-card .value.purple { color: var(--accent-purple); }
+
+        /* Sections */
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .section-content {
+            padding: 20px;
+        }
+
+        /* Chain List */
+        .chain-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chain-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .chain-item:hover {
+            border-color: var(--accent-orange);
+        }
+
+        .chain-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .chain-name {
+            font-weight: 500;
+        }
+
+        .chain-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .chain-status.pending {
+            background: rgba(88, 166, 255, 0.2);
+            color: var(--accent-blue);
+        }
+
+        .chain-status.active {
+            background: rgba(63, 185, 80, 0.2);
+            color: var(--accent-green);
+        }
+
+        .chain-status.completed {
+            background: rgba(163, 113, 247, 0.2);
+            color: var(--accent-purple);
+        }
+
+        .chain-status.failed, .chain-status.cancelled {
+            background: rgba(248, 81, 73, 0.2);
+            color: var(--accent-red);
+        }
+
+        .chain-item-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            font-size: 13px;
+        }
+
+        .chain-detail-label {
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .chain-detail-value {
+            font-family: monospace;
+            word-break: break-all;
+        }
+
+        /* Create Chain Form */
+        .create-chain-form {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .create-chain-form .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Fee Estimate Box */
+        .fee-estimate {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .fee-estimate h4 {
+            margin-bottom: 15px;
+            color: var(--accent-orange);
+        }
+
+        .fee-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .fee-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .fee-label {
+            color: var(--text-secondary);
+        }
+
+        /* QR Code */
+        .qr-container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .qr-container canvas {
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        /* Address Display */
+        .address-display {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .address-display code {
+            flex: 1;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-btn:hover {
+            background: var(--border-color);
+        }
+
+        /* Hop Timeline */
+        .hop-timeline {
+            padding: 20px 0;
+        }
+
+        .hop-item {
+            display: flex;
+            gap: 20px;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .hop-item:last-child {
+            border-bottom: none;
+        }
+
+        .hop-number {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-tertiary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .hop-number.completed {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .hop-details {
+            flex: 1;
+        }
+
+        .hop-address {
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .hop-info {
+            display: flex;
+            gap: 20px;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 24px;
+            padding: 4px;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-warning {
+            background: rgba(247, 147, 26, 0.15);
+            border: 1px solid var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        .alert-danger {
+            background: rgba(248, 81, 73, 0.15);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .alert-success {
+            background: rgba(63, 185, 80, 0.15);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        /* Range Slider */
+        .range-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .range-group input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            border: none;
+        }
+
+        .range-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-orange);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .range-value {
+            background: var(--bg-tertiary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .create-chain-form {
+                grid-template-columns: 1fr;
+            }
+
+            .chain-item-details {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="32" cy="32" r="30" fill="#F7931A"/>
+                    <path d="M45.5 28.5c.7-4.5-2.8-7-7.5-8.6l1.5-6.2-3.8-.9-1.5 6c-1-.2-2-.4-3-.6l1.5-6-3.7-1-1.5 6.2c-.8-.2-1.6-.4-2.4-.5l-5.1-1.3-1 4s2.8.6 2.7.7c1.5.4 1.8 1.4 1.7 2.2l-1.8 7c.1 0 .2 0 .4.1h-.4l-2.5 10c-.2.5-.7 1.2-1.7 1l-2.7-.7-1.9 4.3 4.8 1.2c.9.2 1.8.5 2.6.7l-1.5 6.2 3.7 1 1.5-6.2c1 .3 2 .5 3 .8l-1.5 6.1 3.8.9 1.5-6.2c6.3 1.2 11.1.7 13.1-5 1.6-4.6-.1-7.2-3.4-8.9 2.4-.6 4.3-2.2 4.8-5.6zm-8.5 12c-1.1 4.6-9 2.1-11.5 1.5l2.1-8.2c2.5.6 10.6 1.9 9.4 6.7zm1.2-12.1c-1 4.2-7.5 2.1-9.6 1.5l1.9-7.4c2.1.5 8.8 1.5 7.7 5.9z" fill="#fff"/>
+                </svg>
+                <h1>Bitcoin <span>Relay</span></h1>
+            </div>
+            <div class="header-controls">
+                <div class="network-toggle">
+                    <button class="network-btn testnet active" onclick="switchNetwork('testnet')">Testnet</button>
+                    <button class="network-btn mainnet" onclick="switchNetwork('mainnet')">Mainnet</button>
+                </div>
+                <div class="status-badge">
+                    <div class="status-dot" id="engineStatus"></div>
+                    <span id="engineStatusText">Engine Off</span>
+                </div>
+                <button class="btn btn-secondary" onclick="logout()" id="logoutBtn" style="display:none;">Logout</button>
+            </div>
+        </header>
+
+        <!-- Auth Screen -->
+        <div class="auth-screen" id="authScreen">
+            <div class="auth-box" id="loginBox">
+                <h2>🔐 Unlock Your Relay</h2>
+                <p>Enter your master password to access your relay chains.</p>
+                <form onsubmit="login(event)">
+                    <div class="form-group">
+                        <label>Master Password</label>
+                        <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Unlock</button>
+                </form>
+            </div>
+
+            <div class="auth-box" id="setupBox" style="display:none;">
+                <h2>🔑 Set Up Password</h2>
+                <p>Create a master password to encrypt your private keys. This cannot be recovered!</p>
+                <form onsubmit="setupPassword(event)">
+                    <div class="form-group">
+                        <label>Master Password</label>
+                        <input type="password" id="setupPassword" placeholder="Minimum 8 characters" required minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
+                    </div>
+                    <div class="alert alert-warning">
+                        <span>⚠️</span>
+                        <span>Write this password down! If you lose it, you lose access to all keys.</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Create Password</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard" id="dashboard">
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Block Height</h3>
+                    <div class="value blue" id="blockHeight">---</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Chains</h3>
+                    <div class="value green" id="activeChains">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Pending Chains</h3>
+                    <div class="value orange" id="pendingChains">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Network</h3>
+                    <div class="value purple" id="currentNetwork">Testnet</div>
+                </div>
+            </div>
+
+            <!-- Create Chain Section -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>➕ Create New Relay Chain</h2>
+                    <button class="btn btn-secondary" onclick="toggleCreateForm()">
+                        <span id="toggleFormText">Show Form</span>
+                    </button>
+                </div>
+                <div class="section-content" id="createFormSection" style="display:none;">
+                    <form class="create-chain-form" onsubmit="createChain(event)">
+                        <div class="form-group">
+                            <label>Chain Name</label>
+                            <input type="text" id="chainName" placeholder="My Relay Chain">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Number of Hops</label>
+                            <div class="range-group">
+                                <input type="range" id="numHops" min="2" max="10" value="5" oninput="updateHopsValue(); estimateFees();">
+                                <span class="range-value" id="hopsValue">5</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Fee Priority</label>
+                            <select id="feePriority" onchange="estimateFees()">
+                                <option value="economy">Economy (~1+ hour)</option>
+                                <option value="low">Low (~1 hour)</option>
+                                <option value="medium" selected>Medium (~30 min)</option>
+                                <option value="high">High (Next block)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Final Destination</label>
+                            <select id="finalDestType" onchange="toggleFinalAddress()">
+                                <option value="generate">Generate new address (recommended)</option>
+                                <option value="custom">Use my own address</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group full-width" id="customAddressGroup" style="display:none;">
+                            <label>Your Destination Address</label>
+                            <input type="text" id="finalAddress" placeholder="bc1q... or tb1q...">
+                        </div>
+
+                        <div class="form-group full-width">
+                            <div class="fee-estimate" id="feeEstimate">
+                                <h4>📊 Fee & Timing Estimate</h4>
+                                <div class="fee-grid">
+                                    <div class="fee-item">
+                                        <span class="fee-label">Fee Rate</span>
+                                        <span id="feeRate">-- sat/vB</span>
+                                    </div>
+                                    <div class="fee-item">
+                                        <span class="fee-label">Per Transaction</span>
+                                        <span id="feePerTx">-- sats</span>
+                                    </div>
+                                    <div class="fee-item">
+                                        <span class="fee-label">Total Transactions</span>
+                                        <span id="totalTxs">--</span>
+                                    </div>
+                                    <div class="fee-item">
+                                        <span class="fee-label">Total Fees</span>
+                                        <span id="totalFees" style="color: var(--accent-orange); font-weight: 600;">-- sats</span>
+                                    </div>
+                                    <div class="fee-item">
+                                        <span class="fee-label">Delay Pattern</span>
+                                        <span id="delayPattern">--</span>
+                                    </div>
+                                    <div class="fee-item">
+                                        <span class="fee-label">Est. Duration</span>
+                                        <span id="estDuration">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width" style="display: flex; gap: 12px; justify-content: flex-end;">
+                            <button type="button" class="btn btn-secondary" onclick="previewChain()">Preview (Dry Run)</button>
+                            <button type="submit" class="btn btn-primary">Create Chain</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Chains List -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>⛓️ Your Relay Chains</h2>
+                    <button class="btn btn-secondary" onclick="refreshChains()">Refresh</button>
+                </div>
+                <div class="section-content">
+                    <div id="chainsList">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                            </svg>
+                            <p>No relay chains yet. Create your first chain above!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chain Detail Modal -->
+    <div class="modal-overlay" id="chainModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalChainName">Chain Details</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalContent">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <!-- Dynamic buttons -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentNetwork = 'testnet';
+        let isAuthenticated = false;
+        let statusInterval = null;
+
+        // API Helpers
+        async function api(endpoint, options = {}) {
+            const response = await fetch(endpoint, {
+                headers: { 'Content-Type': 'application/json' },
+                ...options
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Request failed');
+            return data;
+        }
+
+        // Auth Functions
+        async function checkAuth() {
+            try {
+                const status = await api('/api/auth/status');
+                if (!status.password_set) {
+                    document.getElementById('loginBox').style.display = 'none';
+                    document.getElementById('setupBox').style.display = 'block';
+                } else if (status.authenticated) {
+                    showDashboard();
+                }
+            } catch (e) {
+                console.error('Auth check failed:', e);
+            }
+        }
+
+        async function setupPassword(e) {
+            e.preventDefault();
+            const password = document.getElementById('setupPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+
+            try {
+                await api('/api/auth/setup', {
+                    method: 'POST',
+                    body: JSON.stringify({ password, confirm })
+                });
+                showDashboard();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function login(e) {
+            e.preventDefault();
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                await api('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ password })
+                });
+                showDashboard();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function logout() {
+            try {
+                await api('/api/auth/logout', { method: 'POST' });
+                location.reload();
+            } catch (e) {
+                console.error('Logout failed:', e);
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('dashboard').classList.add('visible');
+            document.getElementById('logoutBtn').style.display = 'block';
+            isAuthenticated = true;
+            loadInitialData();
+            startStatusPolling();
+        }
+
+        // Data Loading
+        async function loadInitialData() {
+            await Promise.all([
+                refreshStatus(),
+                refreshChains(),
+                loadNetwork()
+            ]);
+            estimateFees();
+        }
+
+        async function loadNetwork() {
+            try {
+                const data = await api('/api/network');
+                currentNetwork = data.network;
+                updateNetworkUI();
+            } catch (e) {
+                console.error('Failed to load network:', e);
+            }
+        }
+
+        async function switchNetwork(network) {
+            if (network === currentNetwork) return;
+
+            const confirm = network === 'mainnet' 
+                ? window.confirm('⚠️ You are switching to MAINNET. Real funds will be used. Continue?')
+                : true;
+
+            if (!confirm) return;
+
+            try {
+                await api('/api/network', {
+                    method: 'POST',
+                    body: JSON.stringify({ network })
+                });
+                currentNetwork = network;
+                updateNetworkUI();
+                refreshChains();
+                refreshStatus();
+                estimateFees();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function updateNetworkUI() {
+            document.querySelectorAll('.network-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.classList.contains(currentNetwork)) {
+                    btn.classList.add('active');
+                }
+            });
+            document.getElementById('currentNetwork').textContent = 
+                currentNetwork === 'mainnet' ? 'Mainnet' : 'Testnet';
+        }
+
+        async function refreshStatus() {
+            try {
+                const status = await api('/api/status');
+                document.getElementById('blockHeight').textContent = 
+                    status.block_height?.toLocaleString() || '---';
+                document.getElementById('activeChains').textContent = status.active_chains;
+                document.getElementById('pendingChains').textContent = status.pending_chains;
+
+                const dot = document.getElementById('engineStatus');
+                const text = document.getElementById('engineStatusText');
+                if (status.engine_running) {
+                    dot.classList.add('running');
+                    text.textContent = 'Engine Running';
+                } else {
+                    dot.classList.remove('running');
+                    text.textContent = 'Engine Off';
+                }
+            } catch (e) {
+                console.error('Failed to refresh status:', e);
+            }
+        }
+
+        function startStatusPolling() {
+            if (statusInterval) clearInterval(statusInterval);
+            statusInterval = setInterval(refreshStatus, 30000);
+        }
+
+        // Chain Management
+        async function refreshChains() {
+            try {
+                const data = await api('/api/chains');
+                renderChains(data.chains);
+            } catch (e) {
+                console.error('Failed to load chains:', e);
+            }
+        }
+
+        function renderChains(chains) {
+            const container = document.getElementById('chainsList');
+
+            if (!chains || chains.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                        </svg>
+                        <p>No relay chains yet. Create your first chain above!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = chains.map(chain => `
+                <div class="chain-item" onclick="showChainDetails(${chain.id})">
+                    <div class="chain-item-header">
+                        <span class="chain-name">${escapeHtml(chain.name)}</span>
+                        <span class="chain-status ${chain.status}">${chain.status}</span>
+                    </div>
+                    <div class="chain-item-details">
+                        <div>
+                            <div class="chain-detail-label">Intake Address</div>
+                            <div class="chain-detail-value">${truncateAddress(chain.intake_address)}</div>
+                        </div>
+                        <div>
+                            <div class="chain-detail-label">Hops</div>
+                            <div class="chain-detail-value">${chain.current_hop} / ${chain.total_hops}</div>
+                        </div>
+                        <div>
+                            <div class="chain-detail-label">Amount</div>
+                            <div class="chain-detail-value">${chain.amount_received_sats ? formatSats(chain.amount_received_sats) : '---'}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function showChainDetails(chainId) {
+            try {
+                const chain = await api(`/api/chains/${chainId}`);
+                renderChainModal(chain);
+                document.getElementById('chainModal').classList.add('visible');
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function renderChainModal(chain) {
+            document.getElementById('modalChainName').textContent = chain.name;
+
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <div class="alert ${chain.status === 'active' ? 'alert-success' : chain.status === 'pending' ? 'alert-warning' : ''}">
+                    <span>Status: <strong>${chain.status.toUpperCase()}</strong></span>
+                </div>
+
+                <h4 style="margin: 20px 0 10px;">📥 Intake Address</h4>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">
+                    Send funds to this address to start the relay
+                </p>
+                <div class="address-display">
+                    <code>${chain.intake_address}</code>
+                    <button class="copy-btn" onclick="copyToClipboard('${chain.intake_address}')">Copy</button>
+                </div>
+
+                <h4 style="margin: 20px 0 10px;">📤 Final Destination</h4>
+                <div class="address-display">
+                    <code>${chain.final_address}</code>
+                    <button class="copy-btn" onclick="copyToClipboard('${chain.final_address}')">Copy</button>
+                </div>
+                ${chain.final_is_generated ? '<p style="font-size: 12px; color: var(--accent-orange);">⚠️ This address was generated - make sure to export keys!</p>' : ''}
+
+                <h4 style="margin: 20px 0 10px;">🔗 Relay Hops</h4>
+                <div class="hop-timeline">
+                    ${chain.hops.map((hop, i) => `
+                        <div class="hop-item">
+                            <div class="hop-number ${hop.status === 'relayed' ? 'completed' : ''}">${i + 1}</div>
+                            <div class="hop-details">
+                                <div>
+                                    <strong>Hop ${i + 1}</strong>
+                                    <span class="chain-status ${hop.status}" style="margin-left: 10px;">${hop.status}</span>
+                                </div>
+                                <div class="hop-address">${hop.address}</div>
+                                <div class="hop-info">
+                                    <span>Delay: ${hop.delay_blocks} blocks</span>
+                                    ${hop.outgoing_amount_sats ? `<span>Sent: ${formatSats(hop.outgoing_amount_sats)}</span>` : ''}
+                                    ${hop.outgoing_fee_sats ? `<span>Fee: ${formatSats(hop.outgoing_fee_sats)}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                ${chain.amount_received_sats ? `
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px; margin-top: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center;">
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: 12px;">Received</div>
+                                <div style="font-size: 18px; font-weight: 600;">${formatSats(chain.amount_received_sats)}</div>
+                            </div>
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: 12px;">Fees</div>
+                                <div style="font-size: 18px; font-weight: 600; color: var(--accent-red);">${formatSats(chain.total_fees_sats || 0)}</div>
+                            </div>
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: 12px;">Final Amount</div>
+                                <div style="font-size: 18px; font-weight: 600; color: var(--accent-green);">${formatSats(chain.amount_sent_sats || 0)}</div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+
+            const footer = document.getElementById('modalFooter');
+            let buttons = '';
+
+            if (chain.status === 'pending') {
+                buttons += `<button class="btn btn-success" onclick="activateChain(${chain.id})">Activate Chain</button>`;
+                buttons += `<button class="btn btn-danger" onclick="cancelChain(${chain.id})">Cancel</button>`;
+            } else if (chain.status === 'active') {
+                buttons += `<button class="btn btn-danger" onclick="cancelChain(${chain.id})">Cancel</button>`;
+            }
+
+            buttons += `<button class="btn btn-secondary" onclick="exportChainKeys(${chain.id})">Export Keys</button>`;
+            buttons += `<button class="btn btn-secondary" onclick="closeModal()">Close</button>`;
+
+            footer.innerHTML = buttons;
+        }
+
+        function closeModal() {
+            document.getElementById('chainModal').classList.remove('visible');
+        }
+
+        async function activateChain(chainId) {
+            try {
+                await api(`/api/chains/${chainId}/activate`, { method: 'POST' });
+                alert('Chain activated! Send funds to the intake address to begin.');
+                closeModal();
+                refreshChains();
+                refreshStatus();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function cancelChain(chainId) {
+            if (!confirm('Are you sure you want to cancel this chain?')) return;
+
+            try {
+                await api(`/api/chains/${chainId}/cancel`, { method: 'POST' });
+                closeModal();
+                refreshChains();
+                refreshStatus();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function exportChainKeys(chainId) {
+            try {
+                const keys = await api(`/api/chains/${chainId}/export`);
+                const blob = new Blob([JSON.stringify(keys, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `relay-chain-${chainId}-keys.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        // Chain Creation
+        function toggleCreateForm() {
+            const section = document.getElementById('createFormSection');
+            const text = document.getElementById('toggleFormText');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                text.textContent = 'Hide Form';
+            } else {
+                section.style.display = 'none';
+                text.textContent = 'Show Form';
+            }
+        }
+
+        function toggleFinalAddress() {
+            const type = document.getElementById('finalDestType').value;
+            document.getElementById('customAddressGroup').style.display = 
+                type === 'custom' ? 'block' : 'none';
+        }
+
+        function updateHopsValue() {
+            document.getElementById('hopsValue').textContent = 
+                document.getElementById('numHops').value;
+        }
+
+        async function estimateFees() {
+            const numHops = parseInt(document.getElementById('numHops').value);
+            const priority = document.getElementById('feePriority').value;
+
+            try {
+                const data = await api('/api/fees/estimate', {
+                    method: 'POST',
+                    body: JSON.stringify({ num_hops: numHops, fee_priority: priority })
+                });
+
+                document.getElementById('feeRate').textContent = `${data.fees.fee_rate_sat_vb} sat/vB`;
+                document.getElementById('feePerTx').textContent = formatSats(data.fees.fee_per_transaction_sats);
+                document.getElementById('totalTxs').textContent = data.fees.num_transactions;
+                document.getElementById('totalFees').textContent = formatSats(data.fees.total_fees_sats);
+                document.getElementById('delayPattern').textContent = data.timing.delays_per_hop.join(', ') + ' blocks';
+                document.getElementById('estDuration').textContent = 
+                    data.timing.estimated_hours < 24 
+                        ? `~${data.timing.estimated_hours} hours`
+                        : `~${data.timing.estimated_days} days`;
+            } catch (e) {
+                console.error('Fee estimate failed:', e);
+            }
+        }
+
+        async function previewChain() {
+            const payload = getCreatePayload();
+            payload.dry_run = true;
+
+            try {
+                const result = await api('/api/chains', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                alert(`Preview:\n\nIntake: ${result.intake_address}\nFinal: ${result.final_address}\nHops: ${result.num_hops}\nDelays: ${result.delays.join(', ')} blocks`);
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function createChain(e) {
+            e.preventDefault();
+
+            if (currentNetwork === 'mainnet') {
+                if (!confirm('⚠️ You are creating a chain on MAINNET. Real funds will be used. Continue?')) {
+                    return;
+                }
+            }
+
+            const payload = getCreatePayload();
+
+            try {
+                const result = await api('/api/chains', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                alert(`Chain created!\n\nIntake Address:\n${result.intake_address}\n\nSend funds to this address, then activate the chain to start relaying.`);
+                refreshChains();
+                refreshStatus();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        function getCreatePayload() {
+            const payload = {
+                name: document.getElementById('chainName').value || undefined,
+                num_hops: parseInt(document.getElementById('numHops').value),
+                fee_priority: document.getElementById('feePriority').value
+            };
+
+            if (document.getElementById('finalDestType').value === 'custom') {
+                payload.final_address = document.getElementById('finalAddress').value;
+            }
+
+            return payload;
+        }
+
+        // Utilities
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function truncateAddress(addr) {
+            if (!addr) return '---';
+            return addr.slice(0, 10) + '...' + addr.slice(-8);
+        }
+
+        function formatSats(sats) {
+            if (sats >= 100000000) {
+                return (sats / 100000000).toFixed(8) + ' BTC';
+            }
+            return sats.toLocaleString() + ' sats';
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</body>
+</html>
