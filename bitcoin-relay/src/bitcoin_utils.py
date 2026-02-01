@@ -252,8 +252,8 @@ class WalletManager:
         """
         key = self.get_key_from_wif(wif)
         
-        # Get current balance
-        balance = key.get_balance('satoshi')
+        # Get current balance - FIX: convert to int in case it's returned as string
+        balance = int(key.get_balance('satoshi'))
         
         if send_all:
             amount_sats = balance - fee_sats

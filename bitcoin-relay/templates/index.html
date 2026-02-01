@@ -712,7 +712,7 @@
                 <p>Enter your master password to access your relay chains.</p>
                 <form onsubmit="login(event)">
                     <div class="form-group">
-                        <label>Master Password</label>
+                        <label for="loginPassword">Master Password</label>
                         <input type="password" id="loginPassword" placeholder="Enter your password" required>
                     </div>
                     <button type="submit" class="btn btn-primary btn-block">Unlock</button>
@@ -724,11 +724,11 @@
                 <p>Create a master password to encrypt your private keys. This cannot be recovered!</p>
                 <form onsubmit="setupPassword(event)">
                     <div class="form-group">
-                        <label>Master Password</label>
+                        <label for="setupPassword">Master Password</label>
                         <input type="password" id="setupPassword" placeholder="Minimum 8 characters" required minlength="8">
                     </div>
                     <div class="form-group">
-                        <label>Confirm Password</label>
+                        <label for="confirmPassword">Confirm Password</label>
                         <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
                     </div>
                     <div class="alert alert-warning">
@@ -773,12 +773,12 @@
                 <div class="section-content" id="createFormSection" style="display:none;">
                     <form class="create-chain-form" onsubmit="createChain(event)">
                         <div class="form-group">
-                            <label>Chain Name</label>
+                            <label for="chainName">Chain Name</label>
                             <input type="text" id="chainName" placeholder="My Relay Chain">
                         </div>
 
                         <div class="form-group">
-                            <label>Number of Hops</label>
+                            <label for="numHops">Number of Hops</label>
                             <div class="range-group">
                                 <input type="range" id="numHops" min="2" max="10" value="5" oninput="updateHopsValue(); estimateFees();">
                                 <span class="range-value" id="hopsValue">5</span>
@@ -786,7 +786,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Fee Priority</label>
+                            <label for="feePriority">Fee Priority</label>
                             <select id="feePriority" onchange="estimateFees()">
                                 <option value="economy">Economy (~1+ hour)</option>
                                 <option value="low">Low (~1 hour)</option>
@@ -796,7 +796,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Final Destination</label>
+                            <label for="finalDestType">Final Destination</label>
                             <select id="finalDestType" onchange="toggleFinalAddress()">
                                 <option value="generate">Generate new address (recommended)</option>
                                 <option value="custom">Use my own address</option>
@@ -804,7 +804,7 @@
                         </div>
 
                         <div class="form-group full-width" id="customAddressGroup" style="display:none;">
-                            <label>Your Destination Address</label>
+                            <label for="finalAddress">Your Destination Address</label>
                             <input type="text" id="finalAddress" placeholder="bc1q... or tb1q...">
                         </div>
 
@@ -892,13 +892,18 @@
 
         // API Helpers
         async function api(endpoint, options = {}) {
-            const response = await fetch(endpoint, {
-                headers: { 'Content-Type': 'application/json' },
-                ...options
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Request failed');
-            return data;
+            try {
+                const response = await fetch(endpoint, {
+                    headers: { 'Content-Type': 'application/json' },
+                    ...options
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Request failed');
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
         }
 
         // Auth Functions
@@ -921,14 +926,32 @@
             const password = document.getElementById('setupPassword').value;
             const confirm = document.getElementById('confirmPassword').value;
 
+            if (password !== confirm) {
+                alert('Passwords do not match!');
+                return;
+            }
+
+            if (password.length < 8) {
+                alert('Password must be at least 8 characters!');
+                return;
+            }
+
             try {
-                await api('/api/auth/setup', {
+                const result = await api('/api/auth/setup', {
                     method: 'POST',
                     body: JSON.stringify({ password, confirm })
                 });
-                showDashboard();
+                
+                if (result.success) {
+                    // Force a small delay then show dashboard
+                    setTimeout(() => {
+                        showDashboard();
+                    }, 100);
+                } else {
+                    alert('Setup failed: ' + (result.error || 'Unknown error'));
+                }
             } catch (e) {
-                alert(e.message);
+                alert('Setup failed: ' + e.message);
             }
         }
 
@@ -937,13 +960,18 @@
             const password = document.getElementById('loginPassword').value;
 
             try {
-                await api('/api/auth/login', {
+                const result = await api('/api/auth/login', {
                     method: 'POST',
                     body: JSON.stringify({ password })
                 });
-                showDashboard();
+                
+                if (result.success) {
+                    showDashboard();
+                } else {
+                    alert('Login failed: ' + (result.error || 'Unknown error'));
+                }
             } catch (e) {
-                alert(e.message);
+                alert('Login failed: ' + e.message);
             }
         }
 
@@ -953,6 +981,7 @@
                 location.reload();
             } catch (e) {
                 console.error('Logout failed:', e);
+                location.reload();
             }
         }
 
@@ -988,11 +1017,11 @@
         async function switchNetwork(network) {
             if (network === currentNetwork) return;
 
-            const confirm = network === 'mainnet' 
+            const confirmSwitch = network === 'mainnet' 
                 ? window.confirm('⚠️ You are switching to MAINNET. Real funds will be used. Continue?')
                 : true;
 
-            if (!confirm) return;
+            if (!confirmSwitch) return;
 
             try {
                 await api('/api/network', {
