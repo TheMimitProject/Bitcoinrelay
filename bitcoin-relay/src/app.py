@@ -5,16 +5,17 @@ Main Flask application with web interface and API.
 import os
 import json
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, session
 from functools import wraps
 
-from .config import NETWORKS, MAX_HOPS, MIN_HOPS, SECRET_KEY
+from .config import NETWORKS, MAX_HOPS, MIN_HOPS
 from .database import (
     init_database, get_master_password_hash, set_master_password_hash,
     get_active_network, set_active_network, create_relay_chain,
     get_relay_chain, get_all_relay_chains, update_chain_status,
-    create_relay_hop, get_relay_hops, get_transaction_log, log_transaction
+    create_relay_hop, get_relay_hops, get_transaction_log, log_transaction,
+    update_hop_status, update_hop_relayed, update_chain_amounts
 )
 from .encryption import (
     KeyEncryption, generate_password_hash, verify_password_hash
@@ -23,13 +24,14 @@ from .bitcoin_utils import (
     BitcoinAPI, WalletManager, calculate_fibonacci_delays,
     estimate_total_fees, estimate_relay_timing
 )
-from .relay_engine import RelayEngine
+from .relay_engine import RelayEngine, manual_relay_chain
 
 
 def create_app():
     """Application factory."""
     app = Flask(__name__, template_folder='../templates', static_folder='../static')
-    app.secret_key = SECRET_KEY
+    app.secret_key = os.urandom(32)
+    app.permanent_session_lifetime = timedelta(hours=24)
     
     # Initialize database
     init_database()
@@ -37,12 +39,13 @@ def create_app():
     # Global relay engine state
     app.relay_engine = None
     app.engine_lock = threading.Lock()
+    app.cached_password = None  # Store password for engine restart
     
     def password_required(f):
         """Decorator to require password authentication."""
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if 'password' not in session:
+            if 'authenticated' not in session or not session['authenticated']:
                 return jsonify({'error': 'Authentication required'}), 401
             return f(*args, **kwargs)
         return decorated_function
@@ -66,7 +69,7 @@ def create_app():
         password_hash = get_master_password_hash()
         return jsonify({
             'password_set': password_hash is not None,
-            'authenticated': 'password' in session
+            'authenticated': session.get('authenticated', False)
         })
 
     @app.route('/api/auth/setup', methods=['POST'])
@@ -90,8 +93,9 @@ def create_app():
         set_master_password_hash(password_hash)
         
         # Log user in
-        session['password'] = password
         session.permanent = True
+        session['authenticated'] = True
+        app.cached_password = password
         
         return jsonify({'success': True})
 
@@ -111,8 +115,16 @@ def create_app():
         if not verify_password_hash(password, stored_hash):
             return jsonify({'error': 'Invalid password'}), 401
         
-        session['password'] = password
         session.permanent = True
+        session['authenticated'] = True
+        app.cached_password = password
+        
+        # Auto-start engine on login
+        with app.engine_lock:
+            if app.relay_engine is None or not app.relay_engine.is_running:
+                network = get_active_network()
+                app.relay_engine = RelayEngine(network, password)
+                app.relay_engine.start()
         
         return jsonify({'success': True})
 
@@ -120,6 +132,7 @@ def create_app():
     def auth_logout():
         """Log out and clear session."""
         session.clear()
+        app.cached_password = None
         return jsonify({'success': True})
 
     # ========================================================================
@@ -152,7 +165,8 @@ def create_app():
         with app.engine_lock:
             if app.relay_engine and app.relay_engine.is_running:
                 app.relay_engine.stop()
-                app.relay_engine = RelayEngine(network, session['password'])
+            if app.cached_password:
+                app.relay_engine = RelayEngine(network, app.cached_password)
                 app.relay_engine.start()
         
         return jsonify({
@@ -228,13 +242,28 @@ def create_app():
     @app.route('/api/chains', methods=['GET'])
     @password_required
     def list_chains():
-        """List all relay chains."""
+        """List all relay chains with real-time balance info."""
         network = request.args.get('network', get_active_network())
         chains = get_all_relay_chains(network)
         
-        # Add hop information
+        api = BitcoinAPI(network)
+        
+        # Add hop information and live balances
         for chain in chains:
             chain['hops'] = get_relay_hops(chain['id'])
+            
+            # Get live balance info for active chains
+            if chain['status'] == 'active':
+                try:
+                    intake_bal = api.get_address_balance(chain['intake_address'])
+                    chain['intake_balance'] = {'confirmed': intake_bal[0], 'unconfirmed': intake_bal[1]}
+                    
+                    # Check each hop
+                    for hop in chain['hops']:
+                        hop_bal = api.get_address_balance(hop['address'])
+                        hop['live_balance'] = {'confirmed': hop_bal[0], 'unconfirmed': hop_bal[1]}
+                except:
+                    pass
         
         return jsonify({
             'network': network,
@@ -246,7 +275,11 @@ def create_app():
     def create_chain_route():
         """Create a new relay chain."""
         data = request.json
-        password = session['password']
+        
+        if not app.cached_password:
+            return jsonify({'error': 'Session expired, please login again'}), 401
+        
+        password = app.cached_password
         
         name = data.get('name', f"Relay {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         num_hops = data.get('num_hops', 3)
@@ -363,13 +396,28 @@ def create_app():
     @app.route('/api/chains/<int:chain_id>', methods=['GET'])
     @password_required
     def get_chain_route(chain_id):
-        """Get details of a specific chain."""
+        """Get details of a specific chain with live status."""
         chain = get_relay_chain(chain_id)
         if not chain:
             return jsonify({'error': 'Chain not found'}), 404
         
         chain['hops'] = get_relay_hops(chain_id)
         chain['log'] = get_transaction_log(chain_id)
+        
+        # Get live balances
+        api = BitcoinAPI(chain['network'])
+        try:
+            intake_bal = api.get_address_balance(chain['intake_address'])
+            chain['intake_balance'] = {'confirmed': intake_bal[0], 'unconfirmed': intake_bal[1]}
+            
+            for hop in chain['hops']:
+                hop_bal = api.get_address_balance(hop['address'])
+                hop['live_balance'] = {'confirmed': hop_bal[0], 'unconfirmed': hop_bal[1]}
+            
+            final_bal = api.get_address_balance(chain['final_address'])
+            chain['final_balance'] = {'confirmed': final_bal[0], 'unconfirmed': final_bal[1]}
+        except Exception as e:
+            chain['balance_error'] = str(e)
         
         return jsonify(chain)
 
@@ -406,10 +454,66 @@ def create_app():
         # Ensure relay engine is running
         with app.engine_lock:
             if app.relay_engine is None or not app.relay_engine.is_running:
-                app.relay_engine = RelayEngine(chain['network'], session['password'])
-                app.relay_engine.start()
+                if app.cached_password:
+                    app.relay_engine = RelayEngine(chain['network'], app.cached_password)
+                    app.relay_engine.start()
         
         return jsonify({'success': True})
+
+    @app.route('/api/chains/<int:chain_id>/retry', methods=['POST'])
+    @password_required
+    def retry_chain_route(chain_id):
+        """Manually retry/recover a stuck chain."""
+        if not app.cached_password:
+            return jsonify({'error': 'Session expired, please login again'}), 401
+        
+        result = manual_relay_chain(chain_id, app.cached_password)
+        return jsonify(result)
+
+    @app.route('/api/chains/<int:chain_id>/fix-status', methods=['POST'])
+    @password_required
+    def fix_chain_status(chain_id):
+        """Fix chain and hop statuses based on actual blockchain state."""
+        chain = get_relay_chain(chain_id)
+        if not chain:
+            return jsonify({'error': 'Chain not found'}), 404
+        
+        hops = get_relay_hops(chain_id)
+        api = BitcoinAPI(chain['network'])
+        
+        fixes = []
+        
+        # Check each hop and fix status
+        for i, hop in enumerate(hops):
+            balance = api.get_address_balance(hop['address'])
+            
+            # If hop has 0 balance and status is not 'relayed', it was relayed
+            if balance[0] == 0 and balance[1] == 0 and hop['status'] != 'relayed':
+                # Check if next destination has funds
+                if i < len(hops) - 1:
+                    next_bal = api.get_address_balance(hops[i+1]['address'])
+                else:
+                    next_bal = api.get_address_balance(chain['final_address'])
+                
+                if next_bal[0] > 0 or next_bal[1] > 0:
+                    update_hop_status(hop['id'], 'relayed')
+                    fixes.append(f"Fixed Hop {i+1}: {hop['status']} -> relayed")
+        
+        # Check if chain is complete
+        final_bal = api.get_address_balance(chain['final_address'])
+        if final_bal[0] > 0:
+            if chain['status'] != 'completed':
+                update_chain_status(chain_id, 'completed')
+                update_chain_amounts(chain_id, amount_sent_sats=final_bal[0])
+                fixes.append(f"Fixed chain status: {chain['status']} -> completed")
+            
+            # Mark all hops as relayed
+            for hop in hops:
+                if hop['status'] != 'relayed':
+                    update_hop_status(hop['id'], 'relayed')
+                    fixes.append(f"Fixed Hop: -> relayed")
+        
+        return jsonify({'fixes': fixes, 'chain_id': chain_id})
 
     # ========================================================================
     # Wallet API
@@ -476,6 +580,7 @@ def create_app():
             block_height = None
         
         engine_running = app.relay_engine is not None and app.relay_engine.is_running
+        engine_status = app.relay_engine.get_status() if app.relay_engine else {}
         
         # Count chains
         chains = get_all_relay_chains(network)
@@ -486,6 +591,7 @@ def create_app():
             'network': network,
             'block_height': block_height,
             'engine_running': engine_running,
+            'engine_status': engine_status,
             'active_chains': active_chains,
             'pending_chains': pending_chains
         })
@@ -494,12 +600,15 @@ def create_app():
     @password_required
     def start_engine():
         """Start the relay engine."""
+        if not app.cached_password:
+            return jsonify({'error': 'Session expired, please login again'}), 401
+        
         with app.engine_lock:
             if app.relay_engine is not None and app.relay_engine.is_running:
                 return jsonify({'error': 'Engine already running'}), 400
             
             network = get_active_network()
-            app.relay_engine = RelayEngine(network, session['password'])
+            app.relay_engine = RelayEngine(network, app.cached_password)
             app.relay_engine.start()
         
         return jsonify({'success': True})
@@ -528,7 +637,10 @@ def create_app():
         if not chain:
             return jsonify({'error': 'Chain not found'}), 404
         
-        password = session['password']
+        if not app.cached_password:
+            return jsonify({'error': 'Session expired, please login again'}), 401
+        
+        password = app.cached_password
         
         try:
             keys = {
